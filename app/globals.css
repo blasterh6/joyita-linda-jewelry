@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-manrope);
+  --font-serif: var(--font-noto-serif);
+
+  --color-background: #F8F9FA;
+  --color-foreground: #191C1D;
+  
+  --color-primary: #000613;
+  --color-primary-container: #001F3F;
+
+  --color-surface-container-low: #F3F4F5;
+  --color-surface-container-high: #E7E8E9;
+  --color-surface-dim: #D9DADB;
+  --color-surface-variant: #E1E3E4;
+}
+
+@layer base {
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    @apply font-sans;
+  }
+
+  /* Absolute 0px border-radius mandate */
+  * {
+    border-radius: 0px !important;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-serif tracking-tight leading-tight;
+  }
+
+  /* Glassmorphism utility */
+  .glass {
+    @apply bg-white/80 backdrop-blur-md;
+  }
+
+  /* Marquee Animation */
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  .animate-marquee {
+    display: flex;
+    animation: marquee 30s linear infinite;
+  }
+
+  /* Premium scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background-color: var(--color-surface-container-low);
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--color-primary);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white px-8 py-3 uppercase tracking-widest text-sm font-semibold transition-all hover:bg-primary-container;
+  }
+
+  .btn-primary-white {
+    @apply bg-white text-primary px-8 py-3 uppercase tracking-widest text-sm font-semibold transition-all hover:bg-white/90;
+  }
+
+  .btn-secondary {
+    @apply border border-primary/20 text-primary-container px-8 py-3 uppercase tracking-widest text-sm font-semibold transition-all hover:bg-surface-container-low;
+  }
+
+  .nav-link {
+    @apply text-sm uppercase tracking-[0.1em] font-semibold transition-all hover:text-primary-container/70;
+  }
+}
