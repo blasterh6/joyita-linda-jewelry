@@ -1,37 +1,23 @@
 "use client";
 
 import { useAuth } from "@/context/AuthContext";
-import { useCart } from "@/context/CartContext";
-import { useEffect, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  BarChart, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
-  Cell, 
-  PieChart, 
-  Pie 
+  LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieChart, Pie 
 } from "recharts";
 import { 
-  Users, 
-  ShoppingBag, 
-  DollarSign, 
-  Activity, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Clock, 
-  Settings,
-  MessageCircle
+  Users, ShoppingBag, DollarSign, Activity, ArrowUpRight, Clock, Settings, MessageCircle, Loader2, Save
 } from "lucide-react";
 
 export default function AdminDashboard() {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, token } = useAuth();
   const router = useRouter();
-  const { orders } = useCart();
+  const [stats, setStats] = useState<any>(null);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [whatsapp, setWhatsapp] = useState('521234567890');
+  const [savingWa, setSavingWa] = useState(false);
+  const [waSaved, setWaSaved] = useState(false);
   
   useEffect(() => {
     if (!isLoading && (!user || user.role !== 'admin')) {
@@ -39,38 +25,43 @@ export default function AdminDashboard() {
     }
   }, [user, isLoading, router]);
 
-  // Calculate dynamic metrics
-  const stats = useMemo(() => {
-    const historicalRevenue = 842500;
-    const currentRevenue = orders.reduce((acc, o) => acc + o.total, 0);
-    const totalRevenue = historicalRevenue + currentRevenue;
-    
-    const historicalOrders = 1240;
-    const totalOrders = historicalOrders + orders.length;
-    
-    return {
-      totalRevenue,
-      totalOrders,
-      activeUsers: 8942,
-      conversion: 3.42
-    };
-  }, [orders]);
+  useEffect(() => {
+    if (!token) return;
+    // Load stats
+    fetch('/api/v1/admin/stats', { headers: { 'Authorization': `Bearer ${token}` } })
+      .then(r => r.json())
+      .then(data => { setStats(data); setLoadingStats(false); })
+      .catch(() => setLoadingStats(false));
 
-  const revenueData = [
-    { name: 'Jan', value: 45000 }, { name: 'Feb', value: 52000 }, { name: 'Mar', value: 48000 },
-    { name: 'Apr', value: 61000 }, { name: 'May', value: 59000 }, { name: 'Jun', value: stats.totalRevenue / 12 },
-  ];
+    // Load whatsapp setting
+    fetch('/api/v1/settings?key=whatsapp_number')
+      .then(r => r.json())
+      .then(d => { if (d.value) setWhatsapp(d.value); });
+  }, [token]);
 
-  const categoryData = [
-    { name: 'Aretes', value: 400 + (orders.length * 0.4) }, 
-    { name: 'Collares', value: 300 + (orders.length * 0.3) },
-    { name: 'Anillos', value: 300 + (orders.length * 0.2) }, 
-    { name: 'Otros', value: 200 + (orders.length * 0.1) },
-  ];
+  const saveWhatsapp = async () => {
+    setSavingWa(true);
+    await fetch('/api/v1/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ key: 'whatsapp_number', value: whatsapp }),
+    });
+    setSavingWa(false);
+    setWaSaved(true);
+    setTimeout(() => setWaSaved(false), 2000);
+  };
 
   const COLORS = ['#0A192F', '#1E3A5F', '#C0C0C0', '#F8F9FA'];
 
   if (isLoading || (user && user.role !== 'admin')) return null;
+
+  const revenueData = stats?.monthly?.length > 0
+    ? stats.monthly
+    : [{ name: 'Sin datos', value: 0 }];
+
+  const categoryData = stats?.categories?.length > 0
+    ? stats.categories.map((c: any) => ({ name: c.name, value: Number(c.sales) || 0 }))
+    : [{ name: 'Sin ventas', value: 1 }];
 
   return (
     <div className="space-y-12 pb-24">
@@ -79,81 +70,91 @@ export default function AdminDashboard() {
            <h2 className="text-4xl font-serif italic lowercase text-primary mb-2">resumen ejecutivo</h2>
            <p className="text-[10px] uppercase font-black tracking-[0.4em] text-primary/40">Control total de la plataforma joyita linda</p>
         </div>
-        <div className="flex gap-4">
-           <div className="px-6 py-4 border border-primary/5 bg-white flex items-center gap-4">
-              <Clock size={16} className="text-primary/20" />
-              <span className="text-[10px] uppercase font-bold tracking-widest text-primary/40">Última act: Ahora mismo</span>
-           </div>
+        <div className="px-6 py-4 border border-primary/5 bg-white flex items-center gap-4">
+           <Clock size={16} className="text-primary/20" />
+           <span className="text-[10px] uppercase font-bold tracking-widest text-primary/40">Datos en tiempo real</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-        {[
-          { label: "Ventas Netas", value: `$${stats.totalRevenue.toLocaleString()}`, trend: "+12.4%", icon: <DollarSign size={20} />, up: true },
-          { label: "Pedidos Totales", value: stats.totalOrders.toLocaleString(), trend: "+5.2%", icon: <ShoppingBag size={20} />, up: true },
-          { label: "Usuarios Activos", value: stats.activeUsers.toLocaleString(), trend: "-1.8%", icon: <Users size={20} />, up: false },
-          { label: "Conversión", value: `${stats.conversion}%`, trend: "+0.8%", icon: <Activity size={20} />, up: true },
-        ].map((kpi, i) => (
-          <div key={i} className="bg-white p-10 border border-primary/5 shadow-sm space-y-8 group hover:border-primary/20 transition-all">
-             <div className="flex items-center justify-between">
-                <div className="p-3 bg-surface-container-low text-primary/40 group-hover:bg-primary group-hover:text-white transition-all">{kpi.icon}</div>
-                {kpi.up ? <span className="flex items-center gap-1 text-green-600 text-[10px] font-bold"><ArrowUpRight size={12} /> {kpi.trend}</span> : <span className="flex items-center gap-1 text-red-600 text-[10px] font-bold"><ArrowDownRight size={12} /> {kpi.trend}</span>}
-             </div>
-             <div>
-                <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-primary/40 mb-2">{kpi.label}</p>
-                <p className="text-4xl font-black text-primary tracking-tighter">{kpi.value}</p>
+      {/* KPI Cards */}
+      {loadingStats ? (
+        <div className="flex items-center justify-center py-20 gap-4 text-primary/30">
+          <Loader2 size={24} className="animate-spin" />
+          <span className="text-[10px] uppercase font-black tracking-widest">Cargando métricas...</span>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          {[
+            { label: "Ventas Netas", value: `$${(stats?.totalRevenue || 0).toLocaleString()}`, icon: <DollarSign size={20} />, sub: "MXN Total" },
+            { label: "Pedidos Totales", value: (stats?.totalOrders || 0).toLocaleString(), icon: <ShoppingBag size={20} />, sub: "Órdenes registradas" },
+            { label: "Usuarios Activos", value: (stats?.activeUsers || 0).toLocaleString(), icon: <Users size={20} />, sub: "Cuentas activas" },
+            { label: "Categorías Activas", value: (stats?.categories?.length || 0).toString(), icon: <Activity size={20} />, sub: "En catálogo" },
+          ].map((kpi, i) => (
+            <div key={i} className="bg-white p-10 border border-primary/5 shadow-sm space-y-8 group hover:border-primary/20 transition-all">
+               <div className="flex items-center justify-between">
+                  <div className="p-3 bg-surface-container-low text-primary/40 group-hover:bg-primary group-hover:text-white transition-all">{kpi.icon}</div>
+                  <ArrowUpRight size={14} className="text-green-600" />
+               </div>
+               <div>
+                  <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-primary/40 mb-2">{kpi.label}</p>
+                  <p className="text-4xl font-black text-primary tracking-tighter">{kpi.value}</p>
+                  <p className="text-[9px] text-primary/20 uppercase tracking-widest mt-2">{kpi.sub}</p>
+               </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Charts */}
+      {!loadingStats && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+          <div className="lg:col-span-2 bg-white p-10 border border-primary/5 shadow-sm">
+             <h4 className="text-xs uppercase font-black tracking-[0.2em] mb-12">Rendimiento de Ventas (MXN)</h4>
+             <div className="h-[400px] w-full">
+               <ResponsiveContainer width="100%" height="100%">
+                 <LineChart data={revenueData}>
+                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#0A192F40', fontWeight: 700}} />
+                   <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#0A192F40', fontWeight: 700}}/>
+                   <Tooltip contentStyle={{backgroundColor: '#0A192F', border: 'none', color: 'white'}} itemStyle={{color: 'white', textTransform: 'uppercase', fontSize: '10px', fontWeight: 'bold'}}/>
+                   <Line type="monotone" dataKey="value" stroke="#0A192F" strokeWidth={4} dot={false} activeDot={{ r: 8, stroke: '#fff', strokeWidth: 4 }} />
+                 </LineChart>
+               </ResponsiveContainer>
              </div>
           </div>
-        ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        <div className="lg:col-span-2 bg-white p-10 border border-primary/5 shadow-sm">
-           <div className="flex items-center justify-between mb-12"><h4 className="text-xs uppercase font-black tracking-[0.2em]">Rendimiento de Ventas (MXN)</h4></div>
-           <div className="h-[400px] w-full">
-             <ResponsiveContainer width="100%" height="100%">
-               <LineChart data={revenueData}>
-                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#0A192F40', fontWeight: 700}} />
-                 <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fill: '#0A192F40', fontWeight: 700}}/>
-                 <Tooltip contentStyle={{backgroundColor: '#0A192F', border: 'none', color: 'white'}} itemStyle={{color: 'white', textTransform: 'uppercase', fontSize: '10px', fontWeight: 'bold'}}/>
-                 <Line type="monotone" dataKey="value" stroke="#0A192F" strokeWidth={4} dot={false} activeDot={{ r: 8, stroke: '#fff', strokeWidth: 4 }} />
-               </LineChart>
-             </ResponsiveContainer>
-           </div>
-        </div>
-        <div className="bg-white p-10 border border-primary/5 shadow-sm flex flex-col">
-           <h4 className="text-xs uppercase font-black tracking-[0.2em] mb-12">Mejores Categorías</h4>
-           <div className="flex-1 min-h-[300px]">
-             <ResponsiveContainer width="100%" height="100%">
-               <PieChart>
-                 <Pie data={categoryData} innerRadius={80} outerRadius={120} paddingAngle={10} dataKey="value">
-                   {categoryData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
-                 </Pie>
-               </PieChart>
-             </ResponsiveContainer>
-           </div>
-           <div className="space-y-4 pt-10">
-             {categoryData.map((c, i) => (
-               <div key={i} className="flex items-center justify-between">
-                 <div className="flex items-center gap-3">
-                   <div className="w-3 h-3" style={{backgroundColor: COLORS[i]}} />
-                   <span className="text-[10px] uppercase font-bold text-primary/40 tracking-widest">{c.name}</span>
+          <div className="bg-white p-10 border border-primary/5 shadow-sm flex flex-col">
+             <h4 className="text-xs uppercase font-black tracking-[0.2em] mb-12">Mejores Categorías</h4>
+             <div className="flex-1 min-h-[300px]">
+               <ResponsiveContainer width="100%" height="100%">
+                 <PieChart>
+                   <Pie data={categoryData} innerRadius={80} outerRadius={120} paddingAngle={10} dataKey="value">
+                     {categoryData.map((_: any, index: number) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
+                   </Pie>
+                 </PieChart>
+               </ResponsiveContainer>
+             </div>
+             <div className="space-y-4 pt-10">
+               {categoryData.map((c: any, i: number) => (
+                 <div key={i} className="flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                     <div className="w-3 h-3" style={{backgroundColor: COLORS[i % COLORS.length]}} />
+                     <span className="text-[10px] uppercase font-bold text-primary/40 tracking-widest">{c.name}</span>
+                   </div>
+                   <span className="text-[10px] font-black text-primary">{c.value} Ventas</span>
                  </div>
-                 <span className="text-[10px] font-black text-primary">{Math.round(c.value)} Ventas</span>
-               </div>
-             ))}
-           </div>
+               ))}
+             </div>
+          </div>
         </div>
-      </div>
+      )}
 
+      {/* WhatsApp Settings */}
       <div className="bg-white p-12 border border-primary/5 shadow-sm space-y-12">
          <div>
             <h3 className="text-xs uppercase font-black tracking-[0.4em] text-primary/30 mb-4 flex items-center gap-4">
                <Settings size={16} /> Configuración de Soporte
             </h3>
-            <p className="text-sm font-medium text-primary/60 max-w-xl">Define el número de WhatsApp oficial donde los clientes recibirán asesoría y soporte técnico de Joyita Linda.</p>
+            <p className="text-sm font-medium text-primary/60 max-w-xl">Define el número de WhatsApp oficial donde los clientes recibirán asesoría. Se guarda en la base de datos y aplica de inmediato.</p>
          </div>
-
          <div className="flex items-end gap-8 max-w-md">
             <div className="flex-1 space-y-4">
                <label className="text-[10px] uppercase font-black tracking-widest text-primary/40 block">WhatsApp de Soporte (con código de país)</label>
@@ -161,17 +162,21 @@ export default function AdminDashboard() {
                   <MessageCircle size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/20" />
                   <input 
                     type="text" 
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
                     placeholder="Ej: 521234567890"
-                    defaultValue={typeof window !== 'undefined' ? localStorage.getItem('joyita_whatsapp_number') || '521234567890' : '521234567890'}
-                    onChange={(e) => {
-                      if (typeof window !== 'undefined') {
-                        localStorage.setItem('joyita_whatsapp_number', e.target.value);
-                      }
-                    }}
                     className="w-full h-14 bg-primary/5 border-none pl-12 pr-4 text-[10px] font-black uppercase tracking-widest placeholder:text-primary/20 focus:ring-1 focus:ring-primary/10 transition-all"
                   />
                </div>
             </div>
+            <button
+              onClick={saveWhatsapp}
+              disabled={savingWa}
+              className={`h-14 px-8 flex items-center gap-3 text-[10px] uppercase font-black tracking-widest transition-all ${waSaved ? 'bg-green-600 text-white' : 'btn-primary'}`}
+            >
+              {savingWa ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+              {waSaved ? 'Guardado' : 'Guardar'}
+            </button>
          </div>
       </div>
     </div>

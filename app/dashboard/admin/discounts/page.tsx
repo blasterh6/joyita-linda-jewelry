@@ -1,67 +1,60 @@
 "use client";
 
 import { 
-  Plus, 
-  Trash2, 
-  Save, 
-  ShieldCheck, 
-  BadgePercent,
-  Info,
-  DollarSign,
-  Check,
-  RefreshCw
+  Plus, Trash2, Save, ShieldCheck, BadgePercent, Info, DollarSign, Check, Loader2
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "@/context/AuthContext";
 
 export default function DiscountManager() {
+  const { token } = useAuth();
   const [rules, setRules] = useState<{minAmount: number, discount: number}[]>([]);
-  const [savedStates, setSavedStates] = useState<number[]>([]); // Track which indices are "saving"
+  const [savedStates, setSavedStates] = useState<number[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Load rules from DB
   useEffect(() => {
-    const saved = localStorage.getItem('jl_discount_rules');
-    if (saved) {
-      try {
-        setRules(JSON.parse(saved));
-      } catch (e) {
-        setRules([]);
-      }
-    } else {
-      setRules([]);
-    }
+    fetch('/api/v1/settings?key=discount_rules')
+      .then(r => r.json())
+      .then(data => {
+        if (data.value) {
+          try { setRules(JSON.parse(data.value)); } catch { setRules([]); }
+        } else {
+          setRules([]);
+        }
+      })
+      .catch(() => setRules([]))
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const saveSpecificRule = (index: number) => {
-    // In our LocalStorage-based MVP, saving "one rule" means saving the state of all rules 
-    // but we can provide visual feedback for just that row.
-    localStorage.setItem('jl_discount_rules', JSON.stringify(rules));
-    
-    setSavedStates(prev => [...prev, index]);
-    setTimeout(() => {
-      setSavedStates(prev => prev.filter(i => i !== index));
-    }, 2000);
-
+  const persistRules = async (newRules: typeof rules) => {
+    await fetch('/api/v1/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ key: 'discount_rules', value: JSON.stringify(newRules) }),
+    });
+    // Broadcast update so checkout can read it
     window.dispatchEvent(new Event('storage'));
   };
 
-  const addRule = () => {
-    const newRule = { minAmount: 10000, discount: 25 };
-    const newRules = [...rules, newRule];
-    setRules(newRules);
-    // Explicitly not saving to localStorage yet, until user clicks individual save
+  const saveSpecificRule = async (index: number) => {
+    setSavedStates(prev => [...prev, index]);
+    await persistRules(rules);
+    setTimeout(() => setSavedStates(prev => prev.filter(i => i !== index)), 2000);
   };
 
-  const removeRule = (index: number) => {
+  const addRule = () => setRules(prev => [...prev, { minAmount: 10000, discount: 25 }]);
+
+  const removeRule = async (index: number) => {
     const newRules = rules.filter((_, i) => i !== index);
     setRules(newRules);
-    localStorage.setItem('jl_discount_rules', JSON.stringify(newRules));
-    window.dispatchEvent(new Event('storage'));
+    await persistRules(newRules);
   };
 
   const updateRule = (index: number, field: 'minAmount' | 'discount', value: string) => {
-    const numValue = parseInt(value) || 0;
     const newRules = [...rules];
-    newRules[index][field] = numValue;
+    newRules[index][field] = parseInt(value) || 0;
     setRules(newRules);
   };
 
@@ -70,12 +63,9 @@ export default function DiscountManager() {
       <div className="flex items-end justify-between">
         <div>
            <h2 className="text-4xl font-serif italic lowercase text-primary mb-2">tabulador de descuentos</h2>
-           <p className="text-[10px] uppercase font-black tracking-[0.4em] text-primary/40">Gestión independiente de reglas por rango de compra</p>
+           <p className="text-[10px] uppercase font-black tracking-[0.4em] text-primary/40">Gestión independiente de reglas por rango de compra — guardado en base de datos</p>
         </div>
-        <button 
-          onClick={addRule}
-          className="btn-primary flex items-center gap-4 text-xs h-14 px-10 transition-all"
-        >
+        <button onClick={addRule} className="btn-primary flex items-center gap-4 text-xs h-14 px-10 transition-all">
            Añadir Nuevo Rango <Plus size={16} />
         </button>
       </div>
@@ -89,7 +79,12 @@ export default function DiscountManager() {
                </div>
                <div className="divide-y divide-primary/5">
                   <AnimatePresence>
-                  {rules.map((rule, i) => (
+                  {isLoading ? (
+                    <div className="p-20 flex items-center justify-center gap-4 text-primary/30">
+                      <Loader2 size={20} className="animate-spin" />
+                      <span className="text-[10px] uppercase font-black tracking-widest">Cargando reglas...</span>
+                    </div>
+                  ) : rules.map((rule, i) => (
                     <motion.div 
                       key={`${i}-${rule.minAmount}`}
                       initial={{ opacity: 0, y: 10 }}
@@ -152,15 +147,15 @@ export default function DiscountManager() {
                     </motion.div>
                   ))}
                   </AnimatePresence>
-                   {rules.length === 0 && (
-                     <div className="p-20 text-center flex flex-col items-center gap-6 opacity-40">
-                       <BadgePercent size={40} className="text-primary/30" />
-                       <div>
-                         <p className="text-[10px] uppercase font-black tracking-widest text-primary">Sin reglas configuradas</p>
-                         <p className="text-[9px] uppercase font-bold tracking-wider text-primary/40 mt-2">Usa el botón "Añadir Nuevo Rango" para crear tu primera regla de descuento</p>
-                       </div>
-                     </div>
-                   )}
+                  {!isLoading && rules.length === 0 && (
+                    <div className="p-20 text-center flex flex-col items-center gap-6 opacity-40">
+                      <BadgePercent size={40} className="text-primary/30" />
+                      <div>
+                        <p className="text-[10px] uppercase font-black tracking-widest text-primary">Sin reglas configuradas</p>
+                        <p className="text-[9px] uppercase font-bold tracking-wider text-primary/40 mt-2">Usa el botón "Añadir Nuevo Rango" para crear tu primera regla de descuento</p>
+                      </div>
+                    </div>
+                  )}
                </div>
             </div>
          </div>
@@ -171,10 +166,10 @@ export default function DiscountManager() {
                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
                <div className="flex items-center gap-4 text-white/40 relative z-10">
                   <ShieldCheck size={20} />
-                  <span className="text-[10px] uppercase font-bold tracking-widest leading-none">Protocolo Independiente</span>
+                  <span className="text-[10px] uppercase font-bold tracking-widest leading-none">Guardado en Base de Datos</span>
                </div>
                <p className="text-xs font-medium leading-relaxed opacity-60 relative z-10">
-                 Cada regla se gestiona de forma aislada. Cambia los montos y porcentajes según tus proyecciones de venta y guarda individualmente cada ajuste.
+                 Las reglas se guardan directamente en la base de datos y aplican de forma inmediata a todos los clientes en checkout.
                </p>
                <div className="p-5 bg-white/5 border border-white/10 text-[9px] font-bold uppercase tracking-[0.2em] flex items-center gap-4 relative z-10">
                   <Info size={16} className="text-amber-500 shrink-0" />
