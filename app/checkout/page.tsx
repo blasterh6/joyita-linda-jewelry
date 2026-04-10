@@ -46,20 +46,29 @@ export default function Checkout() {
     }
   };
 
-  const handleFinish = () => {
-    const newOrder = {
-      id: `JL-${Math.floor(100000 + Math.random() * 900000)}`,
-      items: [...cart],
-      total: finalTotal,
-      date: new Date().toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }),
-      status: "Preparando"
-    };
-    
-    addOrder(newOrder);
-    addNotification("Pedido Realizado", `Tu orden ${newOrder.id} está siendo procesada.`, "order");
-    addNotification("Nueva Venta Recibida", `El cliente ${user?.name} ha realizado la orden ${newOrder.id}.`, "sale");
-    setIsSuccess(true);
-    clearCart();
+  const handleFinish = async () => {
+    try {
+      const response = await fetch('/api/v1/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token || ''}` },
+        body: JSON.stringify({
+          items: cart,
+          shipping,
+          tax,
+          total: finalTotal
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Err');
+
+      addNotification("Pedido Realizado", `Tu orden JL-${data.orderId} ha sido registrada.`, "order");
+      addNotification("Nueva Venta", `Venta confirmada por $${formatPrice(finalTotal)} MXN.`, "sale");
+      setIsSuccess(true);
+      clearCart();
+    } catch (err) {
+      addNotification("Error", "No pudimos procesar tu pedido. Intenta de nuevo.", "order");
+    }
   };
 
   if (isLoading || (!user && !isSuccess)) {

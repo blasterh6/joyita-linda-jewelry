@@ -147,6 +147,60 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* Recent Orders Overview */}
+      <div className="bg-white border border-primary/5 shadow-sm">
+        <div className="p-10 border-b border-primary/5 flex items-center justify-between bg-surface-container-lowest">
+           <h4 className="text-xs uppercase font-black tracking-[0.2em]">Órdenes Recientes</h4>
+           <button onClick={() => router.push('/dashboard/admin/orders')} className="text-[9px] uppercase font-black tracking-widest text-primary/40 hover:text-primary transition-colors flex items-center gap-2">
+             Ver Todo <ArrowUpRight size={14} />
+           </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-white text-[9px] uppercase font-black tracking-[0.3em] text-primary/30 border-b border-primary/5">
+                <th className="px-10 py-6">ID</th>
+                <th className="px-10 py-6">Cliente</th>
+                <th className="px-10 py-6">Total</th>
+                <th className="px-10 py-6">Estado</th>
+                <th className="px-10 py-6">Fecha</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-primary/5">
+              {loadingStats ? (
+                <tr>
+                  <td colSpan={5} className="p-20 text-center">
+                    <Loader2 size={24} className="animate-spin mx-auto opacity-20" />
+                  </td>
+                </tr>
+              ) : stats?.recentOrders?.length > 0 ? (
+                stats.recentOrders.map((o: any) => (
+                  <tr key={o.id} className="hover:bg-surface-container-low transition-all">
+                    <td className="px-10 py-6 text-xs font-black text-primary">{o.order_code}</td>
+                    <td className="px-10 py-6 text-xs font-bold text-primary/60 uppercase">{o.customer || 'Desconocido'}</td>
+                    <td className="px-10 py-6 text-xs font-black text-primary">${Number(o.total).toLocaleString()}</td>
+                    <td className="px-10 py-6">
+                      <span className={`text-[9px] font-black uppercase tracking-widest ${
+                        o.status === 'delivered' ? 'text-green-600' : 
+                        o.status === 'preparing' || o.status === 'pending_payment' ? 'text-orange-600' : 
+                        'text-blue-600'
+                      }`}>
+                        {o.status}
+                      </span>
+                    </td>
+                    <td className="px-10 py-6 text-[9px] font-bold text-primary/30 uppercase">{o.date}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="p-20 text-center text-[10px] uppercase font-black tracking-widest text-primary/20">No hay órdenes recientes</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       {/* WhatsApp Settings */}
       <div className="bg-white p-12 border border-primary/5 shadow-sm space-y-12">
          <div>

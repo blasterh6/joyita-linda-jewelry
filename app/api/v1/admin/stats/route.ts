@@ -38,6 +38,19 @@ export async function GET(req: NextRequest) {
       GROUP BY DATE_FORMAT(created_at, '%Y-%m')
       ORDER BY MIN(created_at) ASC
     `);
+    const [recentRows]: any = await conn.query(`
+      SELECT 
+        o.id,
+        CONCAT('ORD-JL-', LPAD(o.id, 4, '0')) as order_code,
+        CONCAT(u.first_name, ' ', u.last_name) as customer,
+        o.total_amount as total,
+        o.status,
+        DATE_FORMAT(o.created_at, '%d/%m %H:%i') as date
+      FROM orders o
+      JOIN users u ON o.customer_id = u.id
+      ORDER BY o.created_at DESC
+      LIMIT 5
+    `);
 
     return NextResponse.json({
       totalRevenue: Number(revenueRow?.total || 0),
@@ -45,6 +58,7 @@ export async function GET(req: NextRequest) {
       activeUsers: Number(usersRow?.total || 0),
       categories: JSON.parse(JSON.stringify(categoryRows, (_, v) => typeof v === 'bigint' ? Number(v) : v)),
       monthly: JSON.parse(JSON.stringify(monthlyRows, (_, v) => typeof v === 'bigint' ? Number(v) : v)),
+      recentOrders: JSON.parse(JSON.stringify(recentRows, (_, v) => typeof v === 'bigint' ? Number(v) : v))
     });
   } catch (err) {
     console.error('Admin stats error:', err);

@@ -22,12 +22,10 @@ interface Order {
 
 interface CartContextType {
   cart: CartItem[];
-  orders: Order[];
   addToCart: (product: any) => void;
   updateQuantity: (id: number, qty: number) => void;
   removeFromCart: (id: number) => void;
   clearCart: () => void;
-  addOrder: (order: Order) => void;
   cartCount: number;
   cartTotalRaw: number;
   cartTotal: number;
@@ -41,7 +39,6 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [discountRules, setDiscountRules] = useState<{minAmount: number, discount: number}[]>([]);
 
   const fetchRules = async () => {
@@ -72,15 +69,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (user) {
       const savedCart = localStorage.getItem(`jl_cart_session_${user.email}`);
-      const savedOrders = localStorage.getItem(`jl_orders_session_${user.email}`);
       if (savedCart) setCart(JSON.parse(savedCart));
       else setCart([]);
-      
-      if (savedOrders) setOrders(JSON.parse(savedOrders));
-      else setOrders([]);
     } else {
       setCart([]);
-      setOrders([]);
     }
   }, [user]);
 
@@ -122,10 +114,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const clearCart = () => setCart([]);
 
-  const addOrder = (order: Order) => {
-    const orderWithEmail = { ...order, userEmail: user?.email };
-    setOrders((prev) => [orderWithEmail, ...prev]);
-  };
+  const addOrder = () => {}; // No longer used in context, managed via API in pages
 
   const cartCount = cart.reduce((acc, item) => acc + item.qty, 0);
   const cartTotalRaw = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
@@ -142,12 +131,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return (
     <CartContext.Provider value={{ 
       cart, 
-      orders, 
       addToCart, 
       updateQuantity, 
       removeFromCart, 
       clearCart, 
-      addOrder, 
       cartCount, 
       cartTotalRaw,
       cartTotal,
