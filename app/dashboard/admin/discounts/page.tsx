@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 
 export default function DiscountManager() {
   const { token } = useAuth();
-  const [rules, setRules] = useState<{minAmount: number, discount: number}[]>([]);
+  const [rules, setRules] = useState<{id: string, minAmount: number, discount: number}[]>([]);
   const [savedStates, setSavedStates] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
