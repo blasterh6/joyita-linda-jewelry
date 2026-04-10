@@ -14,15 +14,16 @@ export async function GET(req: NextRequest) {
     conn = await pool.getConnection();
     const rows: any = await conn.query(`
       SELECT 
-        id, 
-        CONCAT(first_name, ' ', last_name) as name, 
-        email, 
-        role, 
-        IF(is_active, 'Activo', 'Inactivo') as status,
-        DATE_FORMAT(updated_at, 'Hace %kh') as last -- Simplificación para el demo
-      FROM users 
-      WHERE deleted_at IS NULL
-      ORDER BY id DESC
+        u.id, 
+        CONCAT(u.first_name, ' ', u.last_name) as name, 
+        u.email, 
+        r.name as role, 
+        IF(u.is_active, 'Activo', 'Inactivo') as status,
+        DATE_FORMAT(u.updated_at, 'Hace %kh') as last
+      FROM users u
+      JOIN roles r ON u.role_id = r.id
+      WHERE u.deleted_at IS NULL
+      ORDER BY u.id DESC
     `);
     
     // Convert BigInts and properly map
