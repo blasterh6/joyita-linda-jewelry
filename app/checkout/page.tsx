@@ -76,12 +76,18 @@ export default function Checkout() {
     }
   };
 
+  // Guard: Empty Cart
+  useEffect(() => {
+    if (!isLoading && cart.length === 0 && !isSuccess) {
+      router.push('/cart');
+    }
+  }, [cart.length, isSuccess, isLoading, router]);
+
   if (isLoading || (!user && !isSuccess)) {
     return <div className="h-screen flex items-center justify-center text-primary/20 uppercase font-black tracking-widest animate-pulse">Validando Sesión Joyita Linda...</div>;
   }
 
   if (cart.length === 0 && !isSuccess) {
-     router.push('/cart');
      return null;
   }
 
