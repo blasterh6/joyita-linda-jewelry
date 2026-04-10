@@ -19,7 +19,13 @@ export default function DiscountManager() {
       .then(r => r.json())
       .then(data => {
         if (data.value) {
-          try { setRules(JSON.parse(data.value)); } catch { setRules([]); }
+          try { 
+            const parsed = JSON.parse(data.value);
+            // Add stable IDs for React keys
+            setRules(parsed.map((r: any, idx: number) => ({ ...r, id: Math.random().toString(36).substr(2, 9) }))); 
+          } catch { 
+            setRules([]); 
+          }
         } else {
           setRules([]);
         }
@@ -28,11 +34,13 @@ export default function DiscountManager() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const persistRules = async (newRules: typeof rules) => {
+  const persistRules = async (newRules: any[]) => {
+    // Remove temporary IDs before saving to DB
+    const cleanRules = newRules.map(({ id, ...rest }) => rest);
     await fetch('/api/v1/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ key: 'discount_rules', value: JSON.stringify(newRules) }),
+      body: JSON.stringify({ key: 'discount_rules', value: JSON.stringify(cleanRules) }),
     });
     // Broadcast update so checkout can read it
     window.dispatchEvent(new Event('storage'));
@@ -44,7 +52,7 @@ export default function DiscountManager() {
     setTimeout(() => setSavedStates(prev => prev.filter(i => i !== index)), 2000);
   };
 
-  const addRule = () => setRules(prev => [...prev, { minAmount: 10000, discount: 25 }]);
+  const addRule = () => setRules(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), minAmount: 10000, discount: 25 }]);
 
   const removeRule = async (index: number) => {
     const newRules = rules.filter((_, i) => i !== index);
@@ -86,7 +94,7 @@ export default function DiscountManager() {
                     </div>
                   ) : rules.map((rule, i) => (
                     <motion.div 
-                      key={`${i}-${rule.minAmount}`}
+                      key={rule.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.95 }}
@@ -183,7 +191,7 @@ export default function DiscountManager() {
                </h5>
                <div className="space-y-6">
                   {rules.length > 0 ? (
-                    rules.sort((a,b) => a.minAmount - b.minAmount).map((r, i) => (
+                    [...rules].sort((a,b) => a.minAmount - b.minAmount).map((r, i) => (
                       <div key={i} className="flex justify-between items-end">
                          <div className="space-y-1">
                             <span className="text-[10px] font-black text-primary">${r.minAmount.toLocaleString()}</span>
