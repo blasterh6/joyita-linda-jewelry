@@ -30,7 +30,7 @@ export const products: Product[] = [
     ]
   },
   { 
-    id: 2, 
+    id: 3, 
     slug: "collar-lujo-signature-925",
     name: "Collar Lujo Signature", 
     price: 1200, 
@@ -47,7 +47,7 @@ export const products: Product[] = [
     ]
   },
   { 
-    id: 3, 
+    id: 4, 
     slug: "broquel-plata-joyita",
     name: "Broquel de Plata Joyita", 
     price: 250, 
@@ -64,7 +64,7 @@ export const products: Product[] = [
     ]
   },
   { 
-    id: 4, 
+    id: 5, 
     slug: "gargantilla-plata-fina-925",
     name: "Gargantilla Plata Fina", 
     price: 850, 
