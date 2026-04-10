@@ -83,12 +83,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [cart, user]);
 
-  // Persist User Specific Data
-  useEffect(() => {
-    if (user) {
-      localStorage.setItem(`jl_orders_session_${user.email}`, JSON.stringify(orders));
-    }
-  }, [orders, user]);
+
 
   const addToCart = (product: any) => {
     setCart((prev) => {
