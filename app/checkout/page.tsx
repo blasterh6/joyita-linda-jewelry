@@ -1,6 +1,6 @@
 "use client";
 
-import { ShoppingBag, ArrowLeft, ShieldCheck, MapPin, CreditCard, ChevronRight, CheckCircle, Tag, AlertCircle } from "lucide-react";
+import { ShoppingBag, ArrowLeft, ShieldCheck, MapPin, CreditCard, ChevronRight, CheckCircle, Tag, AlertCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import { useCart } from "@/context/CartContext";
@@ -12,13 +12,14 @@ import { useRouter } from "next/navigation";
 
 export default function Checkout() {
   const { cart, cartTotal, cartTotalRaw, activeDiscount, clearCart, addOrder, savings } = useCart();
-  const { user, isLoading } = useAuth();
+  const { user, token, isLoading } = useAuth();
   const { addNotification } = useNotifications();
   const router = useRouter();
   const formatPrice = (p: number) => p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   
   const [step, setStep] = useState(1);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [coupon, setCoupon] = useState("");
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState("");
@@ -37,7 +38,7 @@ export default function Checkout() {
 
   const applyCoupon = () => {
     if (coupon.toUpperCase() === "JOYITA20") {
-      setCouponDiscount(subtotalAfterWholesale * 0.2);
+      setCouponDiscount(cartTotal * 0.2);
       setCouponError("");
       addNotification("Cupón Aplicado", "Has obtenido un 20% de descuento Joyita Linda.", "sale");
     } else {
@@ -47,10 +48,12 @@ export default function Checkout() {
   };
 
   const handleFinish = async () => {
+    if (isProcessing) return;
+    setIsProcessing(true);
     try {
       const response = await fetch('/api/v1/orders', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${user?.token || ''}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token || ''}` },
         body: JSON.stringify({
           items: cart,
           shipping,
@@ -68,6 +71,8 @@ export default function Checkout() {
       clearCart();
     } catch (err) {
       addNotification("Error", "No pudimos procesar tu pedido. Intenta de nuevo.", "order");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -151,7 +156,14 @@ export default function Checkout() {
                               </div>
                               <ShieldCheck size={20} className="text-primary/20" />
                            </div>
-                           <button onClick={handleFinish} className="h-16 w-full bg-primary text-white text-[11px] uppercase font-black tracking-widest hover:bg-primary-container transition-all shadow-xl">Confirmar Pedido</button>
+                           <button 
+                             onClick={handleFinish} 
+                             disabled={isProcessing}
+                             className="h-16 w-full bg-primary text-white text-[11px] uppercase font-black tracking-widest hover:bg-primary-container transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-50"
+                           >
+                              {isProcessing && <Loader2 size={16} className="animate-spin" />}
+                              {isProcessing ? 'Procesando...' : 'Confirmar Pedido'}
+                           </button>
                         </div>
                       )}
                    </div>
