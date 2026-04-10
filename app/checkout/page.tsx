@@ -11,7 +11,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 export default function Checkout() {
-  const { cart, cartTotal, cartTotalRaw, activeDiscount, clearCart, addOrder } = useCart();
+  const { cart, cartTotal, cartTotalRaw, activeDiscount, clearCart, addOrder, savings } = useCart();
   const { user, isLoading } = useAuth();
   const { addNotification } = useNotifications();
   const router = useRouter();
@@ -23,10 +23,8 @@ export default function Checkout() {
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [couponError, setCouponError] = useState("");
 
-  const wholesaleDiscountAmount = cartTotalRaw * (activeDiscount / 100);
   const shipping = (cartTotal > 5000 || cartTotal === 0) ? 0 : 250;
-  const subtotalAfterWholesale = cartTotal; // Already discounted by context
-  const subtotalAfterCoupon = subtotalAfterWholesale - couponDiscount;
+  const subtotalAfterCoupon = cartTotal - couponDiscount;
   const tax = subtotalAfterCoupon * 0.16;
   const finalTotal = subtotalAfterCoupon + tax + shipping;
 
@@ -158,9 +156,9 @@ export default function Checkout() {
                       {activeDiscount > 0 && (
                         <div className="p-4 bg-green-50 border border-green-100 flex items-center gap-3">
                            <ShieldCheck size={14} className="text-green-600" />
-                           <p className="text-[8px] font-bold text-green-800 uppercase tracking-widest">
-                             Ahorro de ${wholesaleDiscountAmount.toLocaleString()} por Descuento por volumen
-                           </p>
+                            <p className="text-[8px] font-bold text-green-800 uppercase tracking-widest">
+                              Ahorro de ${formatPrice(savings)} por volumen de compra
+                            </p>
                         </div>
                       )}
                    </div>
@@ -208,7 +206,7 @@ export default function Checkout() {
                         <>
                            <div className="flex justify-between text-[10px] font-black tracking-widest text-green-600 uppercase">
                               <span>Descuento por volumen ({activeDiscount}%)</span>
-                              <span>-${formatPrice(wholesaleDiscountAmount)}</span>
+                              <span>-${formatPrice(savings)}</span>
                            </div>
                            <div className="flex justify-between text-[10px] font-black tracking-widest text-primary uppercase">
                               <span>Subtotal con descuento</span>

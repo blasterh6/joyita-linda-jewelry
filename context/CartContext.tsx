@@ -32,6 +32,7 @@ interface CartContextType {
   cartTotalRaw: number;
   cartTotal: number;
   activeDiscount: number;
+  savings: number;
   discountRules: { minAmount: number, discount: number }[];
 }
 
@@ -42,6 +43,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [discountRules, setDiscountRules] = useState<{minAmount: number, discount: number}[]>([]);
+
+  const fetchRules = async () => {
+    try {
+      const response = await fetch('/api/v1/settings?key=discount_rules');
+      const data = await response.json();
+      if (data.value) {
+        setDiscountRules(JSON.parse(data.value));
+      }
+    } catch (err) {
+      console.error('Error fetching discount rules:', err);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchRules();
+    
+    // Listen for rule updates from admin panel in other tabs
+    const handleStorage = (e: any) => {
+      if (e.key === 'jl_discount_rules' || !e.key) fetchRules();
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   // Load User Specific Data
   useEffect(() => {
@@ -57,10 +82,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setCart([]);
       setOrders([]);
     }
-
-    const savedRules = localStorage.getItem('jl_discount_rules');
-    if (savedRules) setDiscountRules(JSON.parse(savedRules));
-    else setDiscountRules([]);
   }, [user]);
 
   // Persist User Specific Data
@@ -70,6 +91,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, [cart, user]);
 
+  // Persist User Specific Data
   useEffect(() => {
     if (user) {
       localStorage.setItem(`jl_orders_session_${user.email}`, JSON.stringify(orders));
@@ -109,13 +131,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const cartTotalRaw = cart.reduce((acc, item) => acc + (item.price * item.qty), 0);
 
   const activeDiscount = useMemo(() => {
-    if (!user) return 0;
     const sortedRules = [...discountRules].sort((a, b) => b.minAmount - a.minAmount);
     const applicableRule = sortedRules.find(r => cartTotalRaw >= r.minAmount);
     return applicableRule ? applicableRule.discount : 0;
-  }, [user, cartTotalRaw, discountRules]);
+  }, [cartTotalRaw, discountRules]);
 
-  const cartTotal = cartTotalRaw * (1 - activeDiscount / 100);
+  const savings = cartTotalRaw * (activeDiscount / 100);
+  const cartTotal = cartTotalRaw - savings;
 
   return (
     <CartContext.Provider value={{ 
@@ -130,7 +152,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       cartTotalRaw,
       cartTotal,
       activeDiscount,
-      discountRules
+      discountRules,
+      savings
     }}>
       {children}
     </CartContext.Provider>

@@ -9,12 +9,11 @@ import { useCart } from "@/context/CartContext";
 import { useRouter } from "next/navigation";
 
 export default function Cart() {
-  const { cart, removeFromCart, updateQuantity, cartTotal, cartTotalRaw, cartCount, activeDiscount, discountRules } = useCart();
+  const { cart, removeFromCart, updateQuantity, cartTotal, cartTotalRaw, cartCount, activeDiscount, discountRules, savings } = useCart();
   const router = useRouter();
   const formatPrice = (p: number) => p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   
   const nextRule = [...discountRules].sort((a,b) => a.minAmount - b.minAmount).find(r => cartTotalRaw < r.minAmount);
-  const discountAmount = cartTotalRaw * (activeDiscount / 100);
   const tax = cartTotal * 0.16;
   const shipping = (cartTotal > 5000 || cartTotal === 0) ? 0 : 250;
   const total = cartTotal + tax + shipping;
@@ -59,14 +58,14 @@ export default function Cart() {
                      <span className="text-[10px] uppercase font-bold tracking-[0.4em] text-primary/30">Subtotal: ${cartTotal.toLocaleString()} MXN</span>
                   </div>
                   {activeDiscount > 0 && (
-                    <div className="p-4 bg-green-50 border border-green-100 mt-4 flex items-center justify-between">
-                       <div className="flex items-center gap-3">
-                          <ShieldCheck size={16} className="text-green-600" />
-                          <p className="text-[10px] font-bold text-green-800 uppercase tracking-widest">
-                            ¡Estás ahorrando ${discountAmount.toLocaleString()} MXN con este pedido por Descuento por volumen!
-                          </p>
-                       </div>
-                    </div>
+                     <div className="p-4 bg-green-50 border border-green-100 mt-4 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                           <ShieldCheck size={16} className="text-green-600" />
+                           <p className="text-[10px] font-bold text-green-800 uppercase tracking-widest">
+                             ¡Felicidades! Estás ahorrando ${formatPrice(savings)} MXN por tu volumen de compra.
+                           </p>
+                        </div>
+                     </div>
                   )}
                </div>
 
@@ -147,7 +146,7 @@ export default function Cart() {
                         <>
                            <div className="flex justify-between text-[10px] uppercase font-black tracking-widest text-green-600">
                               <span>Descuento por volumen ({activeDiscount}%)</span>
-                              <span>-${formatPrice(discountAmount)}</span>
+                              <span>-${formatPrice(savings)}</span>
                            </div>
                            <div className="flex justify-between text-[10px] uppercase font-black tracking-widest text-white">
                               <span>Subtotal con descuento</span>
